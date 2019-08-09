@@ -2,3 +2,5 @@
 /catapp
 /dogapp
 .vscode
+.DS_Store
+.gitignore
