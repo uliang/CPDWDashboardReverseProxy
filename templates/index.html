@@ -11,9 +11,13 @@
 
 <body>
     <p>Choose your pet</p>
-    <img src="{{ url_for('static', filename='home/1437150.large.jpg') }}" alt="catsanddogs">
-    <button><a href='{{ url_for("choose_pet", pet="cat") }}'>Cat</a></button>
-    <button><a href='{{ url_for("choose_pet", pet="dog") }}'>Dog</a></button>
+    <div class='outer-container'>
+        <img src="{{ url_for('static', filename='home/1437150.large.jpg') }}" alt="catsanddogs">
+        <div>
+            <button><a href='{{ url_for("choose_pet", pet="cat") }}'>Cat</a></button>
+            <button><a href='{{ url_for("choose_pet", pet="dog") }}'>Dog</a></button>
+        </div>
+    </div>
 </body>
 
 </html>
