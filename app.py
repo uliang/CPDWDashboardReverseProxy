@@ -1,32 +1,18 @@
 import os
-import urllib
+import requests
 
-from flask import (Flask, render_template, session,
-                   redirect, request, send_from_directory)
+from flask import Flask, render_template, session, request, Response
 
-
-app = Flask(__name__, static_url_path='')
+# Notice that I set a dummy static url path so that the static
+# routes do not conflict with the static routes of the two apps.
+app = Flask(__name__, static_url_path='/__')
 app.config['SECRET_KEY'] = 'mysecretkey1211'
-app.config['CAT_APP'] = os.path.join(app.static_folder, 'cat', 'build')
-app.config['DOG_APP'] = os.path.join(app.static_folder, 'dog', 'build')
+app.config['CAT_APP'] = 'http://localhost:5000'  # domain for cat app
+app.config['DOG_APP'] = 'http://localhost:61206'  # domain for dog app
 
 
-@app.route('/static/<path:filename>')
-@app.route('/<filename>')
 @app.route('/')
-def index(filename=' '):
-    if any([ext in filename for ext in ['json', 'jpeg', 'js', 'css']]):
-        key = session.get('KEY')
-        try:
-            filename_parts = filename.split('/')
-            stem = filename_parts[-1]
-            app_static_dir = os.path.join(
-                app.config[key], 'static',  *filename_parts[:-1])
-            return send_from_directory(app_static_dir, stem, as_attachment=False)
-        except KeyError:
-            return '', 404
-        except:
-            return send_from_directory(app.config[key], filename, as_attachment=False)
+def index():
     return render_template('index.html')
 
 
@@ -34,17 +20,31 @@ def index(filename=' '):
 def choose_pet(pet):
     key = '_'.join([pet.upper(), 'APP'])
     session['KEY'] = key
-    return send_from_directory(app.config[key], 'index.html', as_attachment=False)
+    req = requests.get(app.config[key])
+    return req.content
     # return pet
 
+# catch-all path so that static resources get passed on to the
+# main app. Note the excluded headers are necessary so that css
+# and js files are correctly decoded on arrival.
+@app.route('/<path:path>')
+def static_files(path):
+    key = session.get('KEY')
+    # print('im here')
+    resp = requests.get(
+        url='/'.join([app.config[key], path]),
+        headers={key: value for (key, value)
+                 in request.headers if key != 'Host'},
+        data=request.get_data(),
+        cookies=request.cookies,
+        allow_redirects=False)
 
-# @app.route('/static/<path:filename>')
-# def static_files(filename):
-#     selected_key = session.get('KEY')
-#     # print('im here')
-#     filename_parts = filename.split('/')
-#     stem = filename_parts[-1]
-#     app_static_dir = os.path.join(
-#         app.config[selected_key], 'static', *filename_parts[:-1])
-#     # print(app_static_dir)
-#     return send_from_directory(app_static_dir, stem, as_attachment=False)
+    excluded_headers = ['content-encoding',
+                        'content-length', 'transfer-encoding', 'connection']
+
+    headers = [(name, value) for (name, value) in resp.raw.headers.items()
+               if name.lower() not in excluded_headers
+               ]
+
+    response = Response(resp.content, resp.status_code, headers)
+    return response
